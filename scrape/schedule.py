@@ -4,7 +4,7 @@ from scrape.models import Fixture
 from scrape.names import normalize
 from scrape.cache import cache_get, cache_set
 
-_URL = "https://site.api.espn.com/apis/v2/sports/soccer/fifa.world/scoreboard"
+_URL = "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard"
 _HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; research-bot/1.0)"}
 
 
@@ -37,8 +37,15 @@ def _parse(raw: str) -> list[Fixture]:
                     home = name
                 else:
                     away = name
-            notes = comp.get("notes", [])
-            stage = notes[0].get("headline", "Unknown") if notes else "Unknown"
+            # altGameNote e.g. "FIFA World Cup, Group L" → "Group L"
+            note = comp.get("altGameNote", "")
+            if "Group" in note:
+                stage = note.split(", ", 1)[-1]  # "Group L"
+            elif data.get("season", {}).get("slug", "").lower() == "group-stage":
+                stage = "Group"
+            else:
+                notes = comp.get("notes", [])
+                stage = notes[0].get("headline", "Unknown") if notes else "Unknown"
             result.append(Fixture(
                 date=date,
                 home=home,

@@ -32,10 +32,11 @@ def fetch_standings(use_cache: bool = True) -> list[TeamStanding]:
 def _parse(raw: str) -> list[TeamStanding]:
     data = json.loads(raw)
     result = []
-    for group in data.get("standings", {}).get("groups", []):
-        group_name = group.get("name", "")
+    # ESPN API returns groups under data["children"], each child has child["standings"]["entries"]
+    for child in data.get("children", []):
+        group_name = child.get("name", "")
         group_letter = group_name.replace("Group ", "").strip()
-        for entry in group.get("standings", {}).get("entries", []):
+        for entry in child.get("standings", {}).get("entries", []):
             team = normalize(entry["team"]["displayName"])
             stats: dict[str, int] = {}
             for stat in entry.get("stats", []):
