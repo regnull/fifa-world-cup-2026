@@ -19,7 +19,7 @@ _CODE_TO_NAME: dict[str, str] = {
     "AT": "Austria", "CL": "Chile", "PE": "Peru", "EC": "Ecuador",
     "PY": "Paraguay", "VE": "Venezuela", "IR": "IR Iran", "SA": "Saudi Arabia",
     "KR": "Korea Republic", "CA": "Canada", "QA": "Qatar", "TN": "Tunisia",
-    "ML": "Mali", "DZ": "Algeria", "CI": "Côte d'Ivoire", "SN": "Senegal",
+    "ML": "Mali", "DZ": "Algeria", "CI": "Côte d'Ivoire",
     "GR": "Greece", "CZ": "Czech Republic", "HU": "Hungary", "PL": "Poland",
     "RO": "Romania", "RS": "Serbia", "SK": "Slovakia", "SI": "Slovenia",
     "UA": "Ukraine", "IS": "Iceland", "IE": "Ireland", "FI": "Finland",

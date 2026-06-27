@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """FIFA World Cup 2026 predictor — Monte Carlo simulation."""
 import argparse
-import sys
 from rich.console import Console
 from scrape.standings import fetch_standings
 from scrape.schedule import fetch_fixtures
@@ -55,8 +54,7 @@ def main() -> None:
         odds_map = {}
 
     if not standings:
-        console.print("[red]Could not fetch standings — check network / cache.[/red]")
-        sys.exit(1)
+        console.print("[yellow]Warning: standings unavailable — simulation may be low-quality.[/yellow]")
 
     n_odds = len(odds_map)
     n_elo = len(elo_raw)

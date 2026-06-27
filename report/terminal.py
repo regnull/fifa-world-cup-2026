@@ -17,7 +17,7 @@ def render_report(
     n_sims: int,
 ) -> None:
     _render_standings(standings)
-    _render_championship_table(result, n_sims)
+    _render_championship_table(result, n_sims, elo_map)
     _render_top_finals(result, n_sims)
     _render_implied_odds(result, n_sims)
     _render_footer(n_sims)
@@ -44,10 +44,15 @@ def _render_standings(standings: list[TeamStanding]) -> None:
         console.print(table)
 
 
-def _render_championship_table(result: SimulationResult, n_sims: int) -> None:
+def _render_championship_table(
+    result: SimulationResult,
+    n_sims: int,
+    elo_map: dict[str, float] | None = None,
+) -> None:
     table = Table(title="Championship Probabilities", box=box.ROUNDED,
                   header_style="bold magenta")
     table.add_column("Team", style="bold", min_width=20)
+    table.add_column("Elo", justify="right")
     table.add_column("Champion", justify="right")
     table.add_column("", min_width=22)
     table.add_column("Finalist", justify="right")
@@ -69,8 +74,12 @@ def _render_championship_table(result: SimulationResult, n_sims: int) -> None:
         bar = "█" * bar_len + "░" * (20 - bar_len)
         colour = "gold1" if p_champ > 0.15 else ("yellow" if p_champ > 0.05 else "white")
 
+        elo_val = elo_map.get(team) if elo_map else None
+        elo_str = f"{elo_val:.0f}" if elo_val is not None else "—"
+
         table.add_row(
             team,
+            elo_str,
             f"[{colour}]{p_champ:.1%}[/{colour}]",
             f"[dim]{bar}[/dim]",
             f"{p_final:.1%}",
@@ -121,6 +130,6 @@ def _render_implied_odds(result: SimulationResult, n_sims: int) -> None:
 def _render_footer(n_sims: int) -> None:
     console.print(Panel(
         Text(f"Based on {n_sims:,} Monte Carlo simulations | "
-             "Data: ESPN · eloratings.net · BetExplorer", justify="center"),
+             "Data: ESPN · eloratings.net · DraftKings (via ESPN)", justify="center"),
         style="dim",
     ))
