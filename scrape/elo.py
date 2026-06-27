@@ -34,13 +34,16 @@ _CODE_TO_NAME: dict[str, str] = {
 
 def fetch_elo(use_cache: bool = True) -> dict[str, float]:
     """Return dict of canonical team name → Elo rating from TSV data."""
-    raw = cache_get("elo_world") if use_cache else None
-    if raw is None:
-        r = requests.get(_URL, headers=_HEADERS, timeout=15)
-        r.raise_for_status()
-        raw = r.text
-        cache_set("elo_world", raw)
-    return _parse(raw)
+    try:
+        raw = cache_get("elo_world") if use_cache else None
+        if raw is None:
+            r = requests.get(_URL, headers=_HEADERS, timeout=15)
+            r.raise_for_status()
+            raw = r.text
+            cache_set("elo_world", raw)
+        return _parse(raw)
+    except Exception:
+        return {}
 
 
 def _parse(tsv: str) -> dict[str, float]:

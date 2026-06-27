@@ -11,12 +11,12 @@ _HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; research-bot/1.0)"}
 def fetch_odds(use_cache: bool = True) -> dict[tuple[str, str], MatchOdds]:
     """Parse 1X2 odds from ESPN scoreboard. Returns empty dict on any failure."""
     try:
-        raw = cache_get("odds") if use_cache else None
+        raw = cache_get("schedule") if use_cache else None
         if raw is None:
             r = requests.get(_URL, headers=_HEADERS, timeout=15)
             r.raise_for_status()
             raw = r.text
-            cache_set("odds", raw)
+            cache_set("schedule", raw)
         return _parse(raw)
     except Exception:
         return {}

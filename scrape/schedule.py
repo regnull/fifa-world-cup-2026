@@ -10,14 +10,16 @@ _HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; research-bot/1.0)"}
 
 def fetch_fixtures(use_cache: bool = True) -> list[Fixture]:
     """Return only unplayed fixtures."""
-    raw = cache_get("schedule") if use_cache else None
-    if raw is None:
-        r = requests.get(_URL, headers=_HEADERS, timeout=15)
-        r.raise_for_status()
-        raw = r.text
-        cache_set("schedule", raw)
-
-    return _parse(raw)
+    try:
+        raw = cache_get("schedule") if use_cache else None
+        if raw is None:
+            r = requests.get(_URL, headers=_HEADERS, timeout=15)
+            r.raise_for_status()
+            raw = r.text
+            cache_set("schedule", raw)
+        return _parse(raw)
+    except Exception:
+        return []
 
 
 def _parse(raw: str) -> list[Fixture]:
