@@ -3,7 +3,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 from scrape.models import TeamStanding, Fixture, MatchOdds
 from model.predictor import predict
-from tournament.bracket import rank_group, select_best_third, build_r32_bracket
+from tournament.bracket import rank_group, select_best_third, build_r32_bracket, resolve_r32_bracket
 
 
 @dataclass
@@ -37,13 +37,14 @@ def run_simulation(
     odds_map: dict[tuple[str, str], MatchOdds],
     elo_map: dict[str, float],
     n_simulations: int = 100_000,
+    r32_slots: list[tuple[str, str]] | None = None,
     progress=None,
     task_id=None,
 ) -> SimulationResult:
     result = SimulationResult(n=n_simulations)
 
     for _ in range(n_simulations):
-        _simulate_once(standings, fixtures, odds_map, elo_map, result)
+        _simulate_once(standings, fixtures, odds_map, elo_map, result, r32_slots)
         if progress is not None and task_id is not None:
             progress.advance(task_id)
 
@@ -56,6 +57,7 @@ def _simulate_once(
     odds_map: dict[tuple[str, str], MatchOdds],
     elo_map: dict[str, float],
     result: SimulationResult,
+    r32_slots: list[tuple[str, str]] | None = None,
 ) -> None:
     # Copy standings into mutable per-group dicts
     sim_standings: dict[str, dict[str, TeamStanding]] = {}
@@ -92,7 +94,10 @@ def _simulate_once(
             result.group_exit[t.team] += 1
 
     # Build R32 bracket and simulate knockout rounds
-    matchups = build_r32_bracket(groups)
+    if r32_slots:
+        matchups = resolve_r32_bracket(r32_slots, groups)
+    else:
+        matchups = build_r32_bracket(groups)
     _simulate_knockout(matchups, odds_map, elo_map, result)
 
 
@@ -177,6 +182,7 @@ def simulate_trace(
     fixtures: list[Fixture],
     odds_map: dict[tuple[str, str], MatchOdds],
     elo_map: dict[str, float],
+    r32_slots: list[tuple[str, str]] | None = None,
 ) -> TournamentTrace:
     """Run one full tournament simulation and return every game result."""
     sim_standings: dict[str, dict[str, TeamStanding]] = {}
@@ -198,7 +204,10 @@ def simulate_trace(
         for letter, teams in sim_standings.items()
     }
 
-    matchups = build_r32_bracket(groups)
+    if r32_slots:
+        matchups = resolve_r32_bracket(r32_slots, groups)
+    else:
+        matchups = build_r32_bracket(groups)
 
     round_names = ["Round of 32", "Round of 16", "Quarterfinals", "Semifinals", "Final"]
     rounds: list[RoundTrace] = []
