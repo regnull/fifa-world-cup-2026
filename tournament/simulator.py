@@ -47,7 +47,7 @@ def _simulate_once(
 
     # Simulate remaining group-stage fixtures
     for fixture in fixtures:
-        if fixture.stage.startswith("Group") or fixture.stage.startswith("group"):
+        if fixture.stage.lower().startswith("group"):
             # Extract the group letter: "Group A" -> "A"
             group_letter = fixture.stage.split()[-1].strip()
             odds = odds_map.get((fixture.home, fixture.away)) or \
