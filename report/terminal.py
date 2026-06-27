@@ -138,6 +138,7 @@ def render_predict(
     away: str,
     odds: MatchOdds | None,
     elo_map: dict[str, float],
+    knockout: bool = False,
 ) -> None:
     DEFAULT_ELO = 1800.0
     home_elo = elo_map.get(home, DEFAULT_ELO)
@@ -145,48 +146,91 @@ def render_predict(
 
     p_h_elo, p_d_elo, p_a_elo = elo_to_probs(home_elo, away_elo)
 
-    table = Table(box=box.ROUNDED, header_style="bold magenta", show_header=True)
+    if knockout:
+        # Redistribute draw probability proportionally (no draw possible)
+        total = p_h_elo + p_a_elo
+        p_h_ko = p_h_elo / total
+        p_a_ko = p_a_elo / total
+
+    draw_col = "—" if knockout else "Draw"
+    table = Table(box=box.ROUNDED, header_style="bold magenta", show_header=True,
+                  title="Knockout (no draw)" if knockout else None)
     table.add_column("", style="bold", min_width=18)
     table.add_column(home, justify="center", min_width=10)
-    table.add_column("Draw", justify="center", min_width=10)
+    if not knockout:
+        table.add_column(draw_col, justify="center", min_width=10)
     table.add_column(away, justify="center", min_width=10)
 
-    table.add_row(
+    def _row(label, ph, pd, pa):
+        if knockout:
+            table.add_row(label, ph, pa)
+        else:
+            table.add_row(label, ph, pd, pa)
+
+    _row(
         "Elo",
         f"{home_elo:.0f}{'*' if home not in elo_map else ''}",
         "—",
         f"{away_elo:.0f}{'*' if away not in elo_map else ''}",
     )
-    table.add_row(
-        "Elo probability",
-        f"[green]{p_h_elo:.1%}[/green]",
-        f"{p_d_elo:.1%}",
-        f"[green]{p_a_elo:.1%}[/green]" if p_a_elo > p_h_elo else f"{p_a_elo:.1%}",
-    )
-    table.add_row(
-        "Elo implied odds",
-        f"{1/p_h_elo:.2f}",
-        f"{1/p_d_elo:.2f}",
-        f"{1/p_a_elo:.2f}",
-    )
+
+    if knockout:
+        fav = "green" if p_h_ko >= p_a_ko else "white"
+        und = "green" if p_a_ko > p_h_ko else "white"
+        _row(
+            "Elo probability",
+            f"[{fav}]{p_h_ko:.1%}[/{fav}]",
+            "—",
+            f"[{und}]{p_a_ko:.1%}[/{und}]",
+        )
+        _row("Elo implied odds", f"{1/p_h_ko:.2f}", "—", f"{1/p_a_ko:.2f}")
+    else:
+        fav = "green" if p_h_elo >= p_a_elo else "white"
+        und = "green" if p_a_elo > p_h_elo else "white"
+        _row(
+            "Elo probability",
+            f"[{fav}]{p_h_elo:.1%}[/{fav}]",
+            f"{p_d_elo:.1%}",
+            f"[{und}]{p_a_elo:.1%}[/{und}]",
+        )
+        _row("Elo implied odds", f"{1/p_h_elo:.2f}", f"{1/p_d_elo:.2f}", f"{1/p_a_elo:.2f}")
 
     if odds:
         p_h_o, p_d_o, p_a_o = odds_to_probs(odds.odds_home, odds.odds_draw, odds.odds_away)
-        table.add_row("", "", "", "")
-        table.add_row(
-            "Market odds (DK)",
-            f"{odds.odds_home:.2f}",
-            f"{odds.odds_draw:.2f}",
-            f"{odds.odds_away:.2f}",
-        )
-        table.add_row(
-            "Market probability",
-            f"[green]{p_h_o:.1%}[/green]",
-            f"{p_d_o:.1%}",
-            f"[green]{p_a_o:.1%}[/green]" if p_a_o > p_h_o else f"{p_a_o:.1%}",
-        )
+        if knockout:
+            total_o = p_h_o + p_a_o
+            p_h_o_ko = p_h_o / total_o
+            p_a_o_ko = p_a_o / total_o
+        _row("", "", "", "")
+        if knockout:
+            _row("Market odds (DK)", f"{odds.odds_home:.2f}", "—", f"{odds.odds_away:.2f}")
+            fav = "green" if p_h_o_ko >= p_a_o_ko else "white"
+            und = "green" if p_a_o_ko > p_h_o_ko else "white"
+            _row(
+                "Market probability",
+                f"[{fav}]{p_h_o_ko:.1%}[/{fav}]",
+                "—",
+                f"[{und}]{p_a_o_ko:.1%}[/{und}]",
+            )
+        else:
+            _row(
+                "Market odds (DK)",
+                f"{odds.odds_home:.2f}",
+                f"{odds.odds_draw:.2f}",
+                f"{odds.odds_away:.2f}",
+            )
+            fav = "green" if p_h_o >= p_a_o else "white"
+            und = "green" if p_a_o > p_h_o else "white"
+            _row(
+                "Market probability",
+                f"[{fav}]{p_h_o:.1%}[/{fav}]",
+                f"{p_d_o:.1%}",
+                f"[{und}]{p_a_o:.1%}[/{und}]",
+            )
 
     console.print(table)
+    if knockout:
+        console.print("[dim]Draw probability redistributed proportionally. Includes penalties.[/dim]")
     if home not in elo_map or away not in elo_map:
         console.print("[dim]* team not found in Elo data — using default 1800[/dim]")
 

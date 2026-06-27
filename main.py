@@ -23,6 +23,8 @@ def main() -> None:
                         help="Run one simulation and print every game result")
     parser.add_argument("--predict", metavar="MATCHUP",
                         help='Predict a single game, e.g. --predict "Spain vs France"')
+    parser.add_argument("--knockout", action="store_true",
+                        help="Use with --predict: no draw, must-win (penalties if level)")
     args = parser.parse_args()
 
     use_cache = not args.no_cache
@@ -76,7 +78,7 @@ def main() -> None:
             return
         home, away = parts[0].strip(), parts[1].strip()
         odds = odds_map.get((home, away)) or odds_map.get((away, home))
-        render_predict(home, away, odds, elo_raw)
+        render_predict(home, away, odds, elo_raw, knockout=args.knockout)
         return
 
     if args.trace:
