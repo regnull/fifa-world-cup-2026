@@ -8,7 +8,7 @@ from scrape.schedule import fetch_fixtures
 from scrape.odds import fetch_odds
 from scrape.elo import fetch_elo
 from tournament.simulator import run_simulation, simulate_trace
-from report.terminal import render_report, render_trace
+from report.terminal import render_report, render_trace, render_predict
 
 console = Console()
 
@@ -21,6 +21,8 @@ def main() -> None:
                         help="Bypass cached responses and re-scrape all sources")
     parser.add_argument("--trace", action="store_true",
                         help="Run one simulation and print every game result")
+    parser.add_argument("--predict", metavar="MATCHUP",
+                        help='Predict a single game, e.g. --predict "Spain vs France"')
     args = parser.parse_args()
 
     use_cache = not args.no_cache
@@ -65,6 +67,17 @@ def main() -> None:
                   f"{len(fixtures)} upcoming fixtures, "
                   f"{n_odds} match odds entries, "
                   f"{n_elo} Elo ratings.[/dim]\n")
+
+    if args.predict:
+        sep = " vs " if " vs " in args.predict else " v "
+        parts = args.predict.split(sep, 1)
+        if len(parts) != 2:
+            console.print("[red]Use format: --predict \"Team A vs Team B\"[/red]")
+            return
+        home, away = parts[0].strip(), parts[1].strip()
+        odds = odds_map.get((home, away)) or odds_map.get((away, home))
+        render_predict(home, away, odds, elo_raw)
+        return
 
     if args.trace:
         console.print("[bold cyan]── Single tournament trace ──[/bold cyan]\n")

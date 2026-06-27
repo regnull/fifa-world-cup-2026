@@ -6,7 +6,8 @@ from rich.rule import Rule
 from rich.text import Text
 from rich import box
 from tournament.simulator import SimulationResult, TournamentTrace
-from scrape.models import TeamStanding
+from scrape.models import TeamStanding, MatchOdds
+from model.probability import elo_to_probs, odds_to_probs
 
 console = Console()
 
@@ -130,6 +131,64 @@ def _render_footer(n_sims: int) -> None:
              "Data: ESPN · eloratings.net · DraftKings (via ESPN)", justify="center"),
         style="dim",
     ))
+
+
+def render_predict(
+    home: str,
+    away: str,
+    odds: MatchOdds | None,
+    elo_map: dict[str, float],
+) -> None:
+    DEFAULT_ELO = 1800.0
+    home_elo = elo_map.get(home, DEFAULT_ELO)
+    away_elo = elo_map.get(away, DEFAULT_ELO)
+
+    p_h_elo, p_d_elo, p_a_elo = elo_to_probs(home_elo, away_elo)
+
+    table = Table(box=box.ROUNDED, header_style="bold magenta", show_header=True)
+    table.add_column("", style="bold", min_width=18)
+    table.add_column(home, justify="center", min_width=10)
+    table.add_column("Draw", justify="center", min_width=10)
+    table.add_column(away, justify="center", min_width=10)
+
+    table.add_row(
+        "Elo",
+        f"{home_elo:.0f}{'*' if home not in elo_map else ''}",
+        "—",
+        f"{away_elo:.0f}{'*' if away not in elo_map else ''}",
+    )
+    table.add_row(
+        "Elo probability",
+        f"[green]{p_h_elo:.1%}[/green]",
+        f"{p_d_elo:.1%}",
+        f"[green]{p_a_elo:.1%}[/green]" if p_a_elo > p_h_elo else f"{p_a_elo:.1%}",
+    )
+    table.add_row(
+        "Elo implied odds",
+        f"{1/p_h_elo:.2f}",
+        f"{1/p_d_elo:.2f}",
+        f"{1/p_a_elo:.2f}",
+    )
+
+    if odds:
+        p_h_o, p_d_o, p_a_o = odds_to_probs(odds.odds_home, odds.odds_draw, odds.odds_away)
+        table.add_row("", "", "", "")
+        table.add_row(
+            "Market odds (DK)",
+            f"{odds.odds_home:.2f}",
+            f"{odds.odds_draw:.2f}",
+            f"{odds.odds_away:.2f}",
+        )
+        table.add_row(
+            "Market probability",
+            f"[green]{p_h_o:.1%}[/green]",
+            f"{p_d_o:.1%}",
+            f"[green]{p_a_o:.1%}[/green]" if p_a_o > p_h_o else f"{p_a_o:.1%}",
+        )
+
+    console.print(table)
+    if home not in elo_map or away not in elo_map:
+        console.print("[dim]* team not found in Elo data — using default 1800[/dim]")
 
 
 def render_trace(trace: TournamentTrace) -> None:
