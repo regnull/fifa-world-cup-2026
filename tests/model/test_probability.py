@@ -1,4 +1,3 @@
-import math
 from model.probability import odds_to_probs, elo_to_probs
 
 
