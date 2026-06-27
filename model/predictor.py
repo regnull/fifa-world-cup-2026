@@ -15,9 +15,13 @@ def predict(
 ) -> MatchResult:
     """Predict a match result. Stochastic — each call samples a fresh outcome."""
     if odds is not None:
-        p_win, p_draw, p_loss = odds_to_probs(
-            odds.odds_home, odds.odds_draw, odds.odds_away
-        )
+        # Orient odds to this matchup — the MatchOdds may have been looked up
+        # from the reversed fixture (home/away swapped).
+        if odds.home == away and odds.away == home:
+            oh, oa = odds.odds_away, odds.odds_home
+        else:
+            oh, oa = odds.odds_home, odds.odds_away
+        p_win, p_draw, p_loss = odds_to_probs(oh, odds.odds_draw, oa)
     else:
         elo_h = elo_map.get(home, _DEFAULT_ELO)
         elo_a = elo_map.get(away, _DEFAULT_ELO)

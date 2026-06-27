@@ -144,6 +144,17 @@ def render_predict(
     home_elo = elo_map.get(home, DEFAULT_ELO)
     away_elo = elo_map.get(away, DEFAULT_ELO)
 
+    # The odds may have been looked up from the reversed fixture
+    # (ESPN stores e.g. "Panama vs England"). Orient them to the
+    # requested home/away so the columns line up.
+    if odds is not None and odds.home == away and odds.away == home:
+        odds = MatchOdds(
+            home=home, away=away,
+            odds_home=odds.odds_away,
+            odds_draw=odds.odds_draw,
+            odds_away=odds.odds_home,
+        )
+
     p_h_elo, p_d_elo, p_a_elo = elo_to_probs(home_elo, away_elo)
 
     if knockout:

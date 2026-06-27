@@ -38,3 +38,21 @@ def test_predict_distribution_matches_odds():
                    elo_map={"Brazil": 2100.0, "Bolivia": 1750.0}).winner == "Brazil"
     )
     assert wins / 2000 > 0.60, f"Expected >60% wins, got {wins/2000:.2f}"
+
+
+def test_predict_orients_reversed_odds():
+    """Odds looked up from the reversed fixture must be re-oriented.
+
+    ESPN stores the fixture as Panama (home) vs England (away): Panama the
+    underdog at 17.0, England the favourite at 1.15. When we predict
+    "England vs Panama" (England as home), England must inherit the 1.15
+    favourite odds — not Panama's 17.0 home odds.
+    """
+    odds = MatchOdds(home="Panama", away="England",
+                     odds_home=17.0, odds_draw=9.0, odds_away=1.15)
+    wins = sum(
+        1 for _ in range(2000)
+        if predict("England", "Panama", odds=odds,
+                   elo_map={"England": 2028.0, "Panama": 1668.0}).winner == "England"
+    )
+    assert wins / 2000 > 0.60, f"Expected >60% England wins, got {wins/2000:.2f}"
