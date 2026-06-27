@@ -25,7 +25,8 @@ def fetch_standings(use_cache: bool = True) -> list[TeamStanding]:
             r = requests.get(_URL, headers=_HEADERS, timeout=15)
             r.raise_for_status()
             raw = r.text
-            cache_set("standings", raw)
+            if use_cache:
+                cache_set("standings", raw)
         return _parse(raw)
     except Exception:
         return []

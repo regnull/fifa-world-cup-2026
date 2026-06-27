@@ -54,10 +54,9 @@ def _render_championship_table(
     table.add_column("Team", style="bold", min_width=20)
     table.add_column("Elo", justify="right")
     table.add_column("Champion", justify="right")
-    table.add_column("", min_width=22)
-    table.add_column("Finalist", justify="right")
-    table.add_column("Semi", justify="right")
-    table.add_column("Quarter", justify="right")
+    table.add_column("Final", justify="right")
+    table.add_column("SF", justify="right")
+    table.add_column("QF", justify="right")
     table.add_column("R16", justify="right")
 
     top_teams = [t for t, _ in result.champion.most_common(16)]
@@ -70,8 +69,6 @@ def _render_championship_table(
         p_qf = p_semi + result.quarter_finalist[team] / n_sims
         p_r16 = p_qf + result.r16[team] / n_sims
 
-        bar_len = int(p_champ * 20)
-        bar = "█" * bar_len + "░" * (20 - bar_len)
         colour = "gold1" if p_champ > 0.15 else ("yellow" if p_champ > 0.05 else "white")
 
         elo_val = elo_map.get(team) if elo_map else None
@@ -81,7 +78,6 @@ def _render_championship_table(
             team,
             elo_str,
             f"[{colour}]{p_champ:.1%}[/{colour}]",
-            f"[dim]{bar}[/dim]",
             f"{p_final:.1%}",
             f"{p_semi:.1%}",
             f"{p_qf:.1%}",

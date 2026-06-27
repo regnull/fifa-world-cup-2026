@@ -24,10 +24,10 @@ _CODE_TO_NAME: dict[str, str] = {
     "RO": "Romania", "RS": "Serbia", "SK": "Slovakia", "SI": "Slovenia",
     "UA": "Ukraine", "IS": "Iceland", "IE": "Ireland", "FI": "Finland",
     "WA": "Wales", "SC": "Scotland", "NI": "Northern Ireland",
-    "NZ": "New Zealand", "ZA": "South Africa", "BI": "Bosnia-Herzegovina",
+    "NZ": "New Zealand", "ZA": "South Africa", "BA": "Bosnia-Herzegovina",
     "CD": "DR Congo", "TT": "Trinidad and Tobago", "PA": "Panama",
     "ID": "Indonesia", "IQ": "Iraq", "JO": "Jordan", "CV": "Cabo Verde",
-    "HT": "Haiti", "CW": "Curaçao", "UZ": "Uzbekistan", "BA": "Bosnia-Herzegovina",
+    "HT": "Haiti", "CW": "Curaçao", "UZ": "Uzbekistan",
     "CG": "Congo DR",
 }
 
@@ -40,7 +40,8 @@ def fetch_elo(use_cache: bool = True) -> dict[str, float]:
             r = requests.get(_URL, headers=_HEADERS, timeout=15)
             r.raise_for_status()
             raw = r.text
-            cache_set("elo_world", raw)
+            if use_cache:
+                cache_set("elo_world", raw)
         return _parse(raw)
     except Exception:
         return {}
