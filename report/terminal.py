@@ -2,9 +2,10 @@ from collections import Counter
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
+from rich.rule import Rule
 from rich.text import Text
 from rich import box
-from tournament.simulator import SimulationResult
+from tournament.simulator import SimulationResult, TournamentTrace
 from scrape.models import TeamStanding
 
 console = Console()
@@ -129,3 +130,40 @@ def _render_footer(n_sims: int) -> None:
              "Data: ESPN · eloratings.net · DraftKings (via ESPN)", justify="center"),
         style="dim",
     ))
+
+
+def render_trace(trace: TournamentTrace) -> None:
+    """Print every game from a single simulated tournament."""
+    if trace.group_games:
+        console.print(Rule("[bold]Simulated Group Stage Games[/bold]"))
+        for r in trace.group_games:
+            _print_game(r)
+
+    for rnd in trace.rounds:
+        console.print(Rule(f"[bold]{rnd.name}[/bold]"))
+        for r in rnd.games:
+            _print_game(r)
+
+    console.print()
+    console.print(Panel(
+        Text(f"🏆  Champion: [bold gold1]{trace.champion}[/bold gold1]", justify="center"),
+        style="bold",
+    ))
+
+
+def _print_game(r) -> None:
+    if r.winner == r.home:
+        home_style, away_style = "bold green", "dim"
+    elif r.winner == r.away:
+        home_style, away_style = "dim", "bold green"
+    else:
+        home_style = away_style = "yellow"
+
+    score = f"{r.home_goals}–{r.away_goals}"
+    suffix = "  [dim](pens)[/dim]" if r.method == "penalties" else ""
+    console.print(
+        f"  [{home_style}]{r.home}[/{home_style}]"
+        f"  [bold]{score}[/bold]"
+        f"  [{away_style}]{r.away}[/{away_style}]"
+        f"{suffix}"
+    )

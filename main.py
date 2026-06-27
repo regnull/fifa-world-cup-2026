@@ -2,12 +2,13 @@
 """FIFA World Cup 2026 predictor — Monte Carlo simulation."""
 import argparse
 from rich.console import Console
+from rich.progress import Progress, BarColumn, TaskProgressColumn, TimeRemainingColumn
 from scrape.standings import fetch_standings
 from scrape.schedule import fetch_fixtures
 from scrape.odds import fetch_odds
 from scrape.elo import fetch_elo
-from tournament.simulator import run_simulation
-from report.terminal import render_report
+from tournament.simulator import run_simulation, simulate_trace
+from report.terminal import render_report, render_trace
 
 console = Console()
 
@@ -18,6 +19,8 @@ def main() -> None:
                         help="Number of Monte Carlo simulations (default: 100000)")
     parser.add_argument("--no-cache", action="store_true",
                         help="Bypass cached responses and re-scrape all sources")
+    parser.add_argument("--trace", action="store_true",
+                        help="Run one simulation and print every game result")
     args = parser.parse_args()
 
     use_cache = not args.no_cache
@@ -63,13 +66,30 @@ def main() -> None:
                   f"{n_odds} match odds entries, "
                   f"{n_elo} Elo ratings.[/dim]\n")
 
-    with console.status(f"[bold green]Simulating {args.sims:,} tournaments..."):
+    if args.trace:
+        console.print("[bold cyan]── Single tournament trace ──[/bold cyan]\n")
+        trace = simulate_trace(standings, fixtures, odds_map, elo_raw)
+        render_trace(trace)
+        return
+
+    with Progress(
+        "[progress.description]{task.description}",
+        BarColumn(),
+        TaskProgressColumn(),
+        TimeRemainingColumn(),
+        console=console,
+    ) as progress:
+        task = progress.add_task(
+            f"[bold green]Simulating {args.sims:,} tournaments...", total=args.sims
+        )
         result = run_simulation(
             standings=standings,
             fixtures=fixtures,
             odds_map=odds_map,
             elo_map=elo_raw,
             n_simulations=args.sims,
+            progress=progress,
+            task_id=task,
         )
 
     render_report(standings, elo_raw, result, n_sims=args.sims)

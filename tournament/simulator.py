@@ -7,6 +7,19 @@ from tournament.bracket import rank_group, select_best_third, build_r32_bracket
 
 
 @dataclass
+class RoundTrace:
+    name: str
+    games: list  # list[MatchResult]
+
+
+@dataclass
+class TournamentTrace:
+    group_games: list       # list[MatchResult] — only simulated (not already played)
+    rounds: list[RoundTrace]
+    champion: str
+
+
+@dataclass
 class SimulationResult:
     n: int
     champion: Counter = field(default_factory=Counter)
@@ -24,11 +37,15 @@ def run_simulation(
     odds_map: dict[tuple[str, str], MatchOdds],
     elo_map: dict[str, float],
     n_simulations: int = 100_000,
+    progress=None,
+    task_id=None,
 ) -> SimulationResult:
     result = SimulationResult(n=n_simulations)
 
     for _ in range(n_simulations):
         _simulate_once(standings, fixtures, odds_map, elo_map, result)
+        if progress is not None and task_id is not None:
+            progress.advance(task_id)
 
     return result
 
@@ -153,3 +170,54 @@ def _simulate_knockout(
         for i in range(0, len(winners) - 1, 2):
             next_round.append((winners[i], winners[i + 1]))
         current_round = next_round
+
+
+def simulate_trace(
+    standings: list[TeamStanding],
+    fixtures: list[Fixture],
+    odds_map: dict[tuple[str, str], MatchOdds],
+    elo_map: dict[str, float],
+) -> TournamentTrace:
+    """Run one full tournament simulation and return every game result."""
+    sim_standings: dict[str, dict[str, TeamStanding]] = {}
+    for s in standings:
+        sim_standings.setdefault(s.group, {})[s.team] = copy.copy(s)
+
+    group_games = []
+    for fixture in fixtures:
+        if fixture.stage.lower().startswith("group"):
+            group_letter = fixture.stage.split()[-1].strip()
+            odds = odds_map.get((fixture.home, fixture.away)) or \
+                   odds_map.get((fixture.away, fixture.home))
+            r = predict(fixture.home, fixture.away, odds, elo_map, knockout=False)
+            _apply_result(sim_standings, group_letter, fixture.home, fixture.away, r)
+            group_games.append(r)
+
+    groups: dict[str, list[TeamStanding]] = {
+        letter: list(teams.values())
+        for letter, teams in sim_standings.items()
+    }
+
+    matchups = build_r32_bracket(groups)
+
+    round_names = ["Round of 32", "Round of 16", "Quarterfinals", "Semifinals", "Final"]
+    rounds: list[RoundTrace] = []
+    current_round = list(matchups)
+    champion = ""
+
+    for round_idx in range(5):
+        games = []
+        winners: list[str] = []
+        for home, away in current_round:
+            odds = odds_map.get((home, away)) or odds_map.get((away, home))
+            r = predict(home, away, odds, elo_map, knockout=True)
+            games.append(r)
+            winners.append(r.winner)
+        rounds.append(RoundTrace(name=round_names[round_idx], games=games))
+        if round_idx == 4:
+            champion = winners[0] if winners else ""
+            break
+        next_round = [(winners[i], winners[i + 1]) for i in range(0, len(winners) - 1, 2)]
+        current_round = next_round
+
+    return TournamentTrace(group_games=group_games, rounds=rounds, champion=champion)
