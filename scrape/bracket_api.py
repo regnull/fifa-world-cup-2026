@@ -1,6 +1,6 @@
 import json
 import requests
-from scrape.cache import cache_get, cache_set
+from scrape.cache import cache_get, cache_set, LIVE_TTL
 from scrape.names import normalize
 
 _HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; research-bot/1.0)"}
@@ -14,7 +14,7 @@ def fetch_r32_slots(use_cache: bool = True) -> list[tuple[str, str]]:
     like 'Group L Winner' or 'Third Place Group E/H/I/J/K'.
     """
     try:
-        raw = cache_get("r32_bracket") if use_cache else None
+        raw = cache_get("r32_bracket", max_age=LIVE_TTL) if use_cache else None
         if raw is None:
             slots = _scrape_r32_slots()
             raw = json.dumps(slots)

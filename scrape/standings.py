@@ -2,7 +2,7 @@ import json
 import requests
 from scrape.models import TeamStanding
 from scrape.names import normalize
-from scrape.cache import cache_get, cache_set
+from scrape.cache import cache_get, cache_set, LIVE_TTL
 
 _URL = "https://site.api.espn.com/apis/v2/sports/soccer/fifa.world/standings"
 _HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; research-bot/1.0)"}
@@ -20,7 +20,7 @@ _STAT_KEYS = {
 
 def fetch_standings(use_cache: bool = True) -> list[TeamStanding]:
     try:
-        raw = cache_get("standings") if use_cache else None
+        raw = cache_get("standings", max_age=LIVE_TTL) if use_cache else None
         if raw is None:
             r = requests.get(_URL, headers=_HEADERS, timeout=15)
             r.raise_for_status()
