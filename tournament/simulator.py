@@ -1,9 +1,34 @@
 import copy
 from collections import Counter
 from dataclasses import dataclass, field
-from scrape.models import TeamStanding, Fixture, MatchOdds
+from scrape.models import TeamStanding, Fixture, MatchOdds, MatchResult, KnockoutResult
 from model.predictor import predict
 from tournament.bracket import rank_group, select_best_third, build_r32_bracket, resolve_r32_bracket
+
+
+def resolve_knockout_game(
+    home: str,
+    away: str,
+    odds_map: dict[tuple[str, str], MatchOdds],
+    elo_map: dict[str, float],
+    knockout_results: dict[frozenset, KnockoutResult] | None,
+) -> MatchResult:
+    """Return the result of a knockout game.
+
+    If the game has already been played (present in ``knockout_results``), the
+    actual final score and winner are returned verbatim (method ``"final"``),
+    oriented to the given home/away. Otherwise the game is predicted.
+    """
+    pinned = (knockout_results or {}).get(frozenset({home, away}))
+    if pinned is not None:
+        if pinned.home == home:
+            hg, ag = pinned.home_goals, pinned.away_goals
+        else:
+            hg, ag = pinned.away_goals, pinned.home_goals
+        return MatchResult(home=home, away=away, home_goals=hg, away_goals=ag,
+                           winner=pinned.winner, method="final")
+    odds = odds_map.get((home, away)) or odds_map.get((away, home))
+    return predict(home, away, odds, elo_map, knockout=True)
 
 
 @dataclass
@@ -38,13 +63,15 @@ def run_simulation(
     elo_map: dict[str, float],
     n_simulations: int = 100_000,
     r32_slots: list[tuple[str, str]] | None = None,
+    knockout_results: dict[frozenset, KnockoutResult] | None = None,
     progress=None,
     task_id=None,
 ) -> SimulationResult:
     result = SimulationResult(n=n_simulations)
 
     for _ in range(n_simulations):
-        _simulate_once(standings, fixtures, odds_map, elo_map, result, r32_slots)
+        _simulate_once(standings, fixtures, odds_map, elo_map, result, r32_slots,
+                       knockout_results)
         if progress is not None and task_id is not None:
             progress.advance(task_id)
 
@@ -58,6 +85,7 @@ def _simulate_once(
     elo_map: dict[str, float],
     result: SimulationResult,
     r32_slots: list[tuple[str, str]] | None = None,
+    knockout_results: dict[frozenset, KnockoutResult] | None = None,
 ) -> None:
     # Copy standings into mutable per-group dicts
     sim_standings: dict[str, dict[str, TeamStanding]] = {}
@@ -98,7 +126,7 @@ def _simulate_once(
         matchups = resolve_r32_bracket(r32_slots, groups)
     else:
         matchups = build_r32_bracket(groups)
-    _simulate_knockout(matchups, odds_map, elo_map, result)
+    _simulate_knockout(matchups, odds_map, elo_map, result, knockout_results)
 
 
 def _apply_result(
@@ -141,6 +169,7 @@ def _simulate_knockout(
     odds_map: dict[tuple[str, str], MatchOdds],
     elo_map: dict[str, float],
     result: SimulationResult,
+    knockout_results: dict[frozenset, KnockoutResult] | None = None,
 ) -> None:
     # round_counters[i] records the loser of each round (i.e. who exits at that stage)
     round_counters = [
@@ -157,8 +186,7 @@ def _simulate_knockout(
         winners: list[str] = []
 
         for home, away in current_round:
-            odds = odds_map.get((home, away)) or odds_map.get((away, home))
-            r = predict(home, away, odds, elo_map, knockout=True)
+            r = resolve_knockout_game(home, away, odds_map, elo_map, knockout_results)
             winner = r.winner
             loser = away if winner == home else home
             round_counters[round_idx][loser] += 1
@@ -183,6 +211,7 @@ def simulate_trace(
     odds_map: dict[tuple[str, str], MatchOdds],
     elo_map: dict[str, float],
     r32_slots: list[tuple[str, str]] | None = None,
+    knockout_results: dict[frozenset, KnockoutResult] | None = None,
 ) -> TournamentTrace:
     """Run one full tournament simulation and return every game result."""
     sim_standings: dict[str, dict[str, TeamStanding]] = {}
@@ -218,8 +247,7 @@ def simulate_trace(
         games = []
         winners: list[str] = []
         for home, away in current_round:
-            odds = odds_map.get((home, away)) or odds_map.get((away, home))
-            r = predict(home, away, odds, elo_map, knockout=True)
+            r = resolve_knockout_game(home, away, odds_map, elo_map, knockout_results)
             games.append(r)
             winners.append(r.winner)
         rounds.append(RoundTrace(name=round_names[round_idx], games=games))

@@ -274,7 +274,12 @@ def _print_game(r) -> None:
         home_style = away_style = "yellow"
 
     score = f"{r.home_goals}–{r.away_goals}"
-    suffix = "  [dim](pens)[/dim]" if r.method == "penalties" else ""
+    if r.method == "penalties":
+        suffix = "  [dim](pens)[/dim]"
+    elif r.method == "final":
+        suffix = "  [cyan]✓ final[/cyan]"
+    else:
+        suffix = ""
     console.print(
         f"  [{home_style}]{r.home}[/{home_style}]"
         f"  [bold]{score}[/bold]"

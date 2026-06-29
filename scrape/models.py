@@ -47,4 +47,14 @@ class MatchResult:
     home_goals: int
     away_goals: int
     winner: str | None   # None = draw (group stage only)
-    method: str          # "normal" or "penalties"
+    method: str          # "normal", "penalties", or "final" (already-played game)
+
+
+@dataclass
+class KnockoutResult:
+    """An actual, completed knockout game scraped from the live bracket."""
+    home: str
+    away: str
+    home_goals: int
+    away_goals: int
+    winner: str

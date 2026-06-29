@@ -8,6 +8,7 @@ from scrape.schedule import fetch_fixtures
 from scrape.odds import fetch_odds
 from scrape.elo import fetch_elo
 from scrape.bracket_api import fetch_r32_slots
+from scrape.knockout import fetch_knockout_results
 from tournament.simulator import run_simulation, simulate_trace
 from report.terminal import render_report, render_trace, render_predict
 
@@ -68,6 +69,13 @@ def main() -> None:
         console.print(f"[yellow]Warning: R32 bracket unavailable ({exc})[/yellow]")
         r32_slots = []
 
+    try:
+        with console.status("[bold green]Fetching completed knockout results..."):
+            knockout_results = fetch_knockout_results(use_cache=use_cache)
+    except Exception as exc:
+        console.print(f"[yellow]Warning: knockout results unavailable ({exc})[/yellow]")
+        knockout_results = {}
+
     if not standings:
         console.print("[yellow]Warning: standings unavailable — simulation may be low-quality.[/yellow]")
 
@@ -91,7 +99,8 @@ def main() -> None:
 
     if args.trace:
         console.print("[bold cyan]── Single tournament trace ──[/bold cyan]\n")
-        trace = simulate_trace(standings, fixtures, odds_map, elo_raw, r32_slots)
+        trace = simulate_trace(standings, fixtures, odds_map, elo_raw, r32_slots,
+                               knockout_results)
         render_trace(trace)
         return
 
@@ -112,6 +121,7 @@ def main() -> None:
             elo_map=elo_raw,
             n_simulations=args.sims,
             r32_slots=r32_slots,
+            knockout_results=knockout_results,
             progress=progress,
             task_id=task,
         )
